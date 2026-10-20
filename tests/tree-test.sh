@@ -3,7 +3,7 @@
 #   usage: tree-test.sh [TREE]     checks a built tree (default: build.sh's) as the product promises it
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-. "$ROOT/build/versions.sh"; . "$ROOT/build/msc.sh"
+. "$ROOT/build/versions.sh"; . "$ROOT/build/msc.sh"; . "$ROOT/tests/lib/stock-cases.sh"
 fail() { echo "FAIL: $1"; exit 1; }
 T="${1:-$TREE}"
 C="$T/bin/cmake"
@@ -13,12 +13,6 @@ C="$T/bin/cmake"
 CL="$(sh "$ROOT/build/fetch-clang22.sh")"
 LIPO="$CL/bin/llvm-lipo"; OBJDUMP="$CL/bin/llvm-objdump"
 t="$(mktemp -d "${TMPDIR:-/tmp}/cmake-tree-test.XXXXXX")"; trap 'rm -rf "$t"' EXIT INT TERM
-# spec: README.md "Stock behaviour" -- stock CMake searches the prefix above every PATH entry, so the checks
-#       below run with no family directory on PATH and no CMAKE_PREFIX_PATH from the caller's shell
-run() { env -i HOME="$HOME" PATH=/usr/bin:/bin "$C" "$@"; }
-
-[ "$(run --version | sed -n 1p)" = "cmake version $KITWARE_VERSION" ] \
-  || fail "bin/cmake --version must print 'cmake version $KITWARE_VERSION' (got '$(run --version | sed -n 1p)')"
 
 archs="$("$LIPO" -info "$C" | sed -n 's/.*: //p' | xargs)"
 case "$archs" in
@@ -51,31 +45,5 @@ for f in $(find "$T" -type f \( -perm -u+x -o -name "*.dylib" -o -name "*.so" \)
 done
 [ "$n" -ge 3 ] || fail "found $n Mach-O files under $T; cmake, ctest and cpack at least"
 
-printf '%s\n' 'file(DOWNLOAD https://example.invalid/x "${CMAKE_CURRENT_LIST_DIR}/x" STATUS st)' \
-  'message("STATUS=${st}")' > "$t/https.cmake"
-out="$(run -P "$t/https.cmake" 2>&1)"
-case "$out" in *'STATUS=1;"Unsupported protocol"'*) ;; *) fail "file(DOWNLOAD https://...) must report Unsupported protocol, the documented limit (got: $out)" ;; esac
-
-mkdir "$t/dep" "$t/proj"
-printf '%s\n' 'cmake_minimum_required(VERSION 3.16)' 'project(dep NONE)' 'message(STATUS "dep-configured")' > "$t/dep/CMakeLists.txt"
-printf '%s\n' 'cmake_minimum_required(VERSION 3.24)' 'project(fc NONE)' 'include(FetchContent)' \
-  'FetchContent_Declare(dep URL https://example.invalid/dep.tar.gz)' 'FetchContent_MakeAvailable(dep)' > "$t/proj/CMakeLists.txt"
-run -S "$t/proj" -B "$t/b-online" > "$t/online.out" 2>&1 && fail "a FetchContent download over HTTPS must fail, or the README's limit is wrong"
-grep -q 'Unsupported protocol' "$t/online.out" || fail "the failed FetchContent download must say Unsupported protocol: $(cat "$t/online.out")"
-out="$(run -S "$t/proj" -B "$t/b-srcdir" -DFETCHCONTENT_SOURCE_DIR_DEP="$t/dep" 2>&1)" \
-  || fail "FetchContent must configure with FETCHCONTENT_SOURCE_DIR_DEP set: $out"
-case "$out" in *dep-configured*) ;; *) fail "FETCHCONTENT_SOURCE_DIR_DEP must reach the dependency: $out" ;; esac
-mkdir -p "$t/b-disc/_deps"; cp -R "$t/dep" "$t/b-disc/_deps/dep-src"
-out="$(run -S "$t/proj" -B "$t/b-disc" -DFETCHCONTENT_FULLY_DISCONNECTED=ON 2>&1)" \
-  || fail "FetchContent must configure with FETCHCONTENT_FULLY_DISCONNECTED=ON over sources placed in _deps: $out"
-case "$out" in *dep-configured*) ;; *) fail "FETCHCONTENT_FULLY_DISCONNECTED=ON must use the placed sources: $out" ;; esac
-
-fake="$t/root/usr/local/mavergreen/fake/share/cmake/Fake"; mkdir -p "$fake" "$t/stock"
-echo 'set(Fake_FOUND TRUE)' > "$fake/FakeConfig.cmake"
-printf '%s\n' 'cmake_minimum_required(VERSION 3.16)' 'project(stock NONE)' 'find_package(Fake CONFIG QUIET)' \
-  'message(STATUS "FAKE=${Fake_FOUND}")' > "$t/stock/CMakeLists.txt"
-found() { l="$1"; shift; run -S "$t/stock" -B "$t/b-$l" -DCMAKE_FIND_ROOT_PATH="$t/root" "$@" 2>&1 | sed -n 's/^-- FAKE=//p'; }
-[ "$(found plain)" = 0 ] || fail "plain find_package(Fake) must not find a package under /usr/local/mavergreen/fake: the product carries no family search paths"
-[ "$(found asked -DCMAKE_PREFIX_PATH=/usr/local/mavergreen/fake)" = 1 ] \
-  || fail "find_package(Fake) must find it when asked with CMAKE_PREFIX_PATH, or the check above proves nothing"
+stock_cases "$C" "$KITWARE_VERSION" "$t"
 echo "PASS: tree ($archs)"
