@@ -19,9 +19,11 @@ stock_cases() {
 
   mkdir "$_sc_t/dep" "$_sc_t/proj"
   printf '%s\n' 'cmake_minimum_required(VERSION 3.16)' 'project(dep NONE)' 'message(STATUS "dep-configured")' > "$_sc_t/dep/CMakeLists.txt"
-  printf '%s\n' 'cmake_minimum_required(VERSION 3.24)' 'project(fc NONE)' 'include(FetchContent)' \
+  # platform: 10.9 without the Command Line Tools has only a make stub; at 3.30 (CMP0168) FetchContent downloads
+  #           directly, with no sub-build to run it (vm-test run 39431982834)
+  printf '%s\n' 'cmake_minimum_required(VERSION 3.30)' 'project(fc NONE)' 'include(FetchContent)' \
     'FetchContent_Declare(dep URL https://example.invalid/dep.tar.gz)' 'FetchContent_MakeAvailable(dep)' > "$_sc_t/proj/CMakeLists.txt"
-  _sc_run -S "$_sc_t/proj" -B "$_sc_t/b-online" > "$_sc_t/online.out" 2>&1 && fail "a FetchContent download over HTTPS must fail, or the README's limit is wrong"
+  _sc_run -S "$_sc_t/proj" -B "$_sc_t/b-online" -DCMAKE_MAKE_PROGRAM=/usr/bin/false > "$_sc_t/online.out" 2>&1 && fail "a FetchContent download over HTTPS must fail, or the README's limit is wrong"
   grep -q 'Unsupported protocol' "$_sc_t/online.out" || fail "the failed FetchContent download must say Unsupported protocol: $(cat "$_sc_t/online.out")"
   _sc_out="$(_sc_run -S "$_sc_t/proj" -B "$_sc_t/b-srcdir" -DFETCHCONTENT_SOURCE_DIR_DEP="$_sc_t/dep" 2>&1)" \
     || fail "FetchContent must configure with FETCHCONTENT_SOURCE_DIR_DEP set: $_sc_out"
