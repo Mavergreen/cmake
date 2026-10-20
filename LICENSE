@@ -1,0 +1,50 @@
+The files in this repository are dedicated to the public domain.
+
+The authors waive all copyright and related or neighboring rights to this
+work, worldwide, under CC0 1.0 Universal:
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Where that dedication is not legally possible, this work is licensed under
+the WTFPL: http://www.wtfpl.net/
+
+Authors: Amitai Schleier <schmonz-web-git@schmonz.com>
+
+The shipped CMake is not covered by the dedication above. It is Kitware's
+CMake, under CMake's own OSI-approved BSD 3-Clause License, which the .pkg
+installs at /usr/local/mavergreen/cmake/doc/cmake-4.4/LICENSE.rst beside
+the licences of the libraries CMake bundles. Its x86_64 slice also contains
+LLVM's libc++, libc++abi and libunwind, under Apache-2.0 WITH LLVM-exception.
+
+patches/ holds changes to CMake's source, under CMake's licence, which
+follows verbatim from CMake 4.4.4's LICENSE.rst.
+
+----------------------------------------------------------------------------
+
+Copyright 2000-2026 Kitware, Inc. and `Contributors <CONTRIBUTORS.rst>`_
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+* Redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+
+* Neither the name of Kitware, Inc. nor the names of Contributors
+  may be used to endorse or promote products derived from this
+  software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
