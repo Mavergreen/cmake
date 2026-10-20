@@ -1,0 +1,9 @@
+Updater icon: NONE. cmake-updater ships the standard macOS application icon by explicit opt-in
+(ALLOW_GENERIC), so no artwork is embedded.
+
+Deliberate: CMake's logo belongs to Kitware, and this product is an unofficial community build
+that must not read as official. A stand-in .icns would be exactly the placeholder the icon gate
+rejects.
+
+Exit: when an original Mavergreen CMake mark exists, add updater/cmake.icns, pass ICON to
+mavericks_add_updater_app, and drop ALLOW_GENERIC.
