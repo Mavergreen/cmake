@@ -1,0 +1,13 @@
+# spec: SKILL.md "Family conventions" check 27 -- superpowers working files stay out of history
+.superpowers/
+/.superpowers/
+.idea/
+/.idea/
+
+# spec: SKILL.md "Versioning" -- <upstream>-mavericks.N is a build product, never committed
+/VERSION
+
+/dist/
+*.pkg
+.DS_Store
+._*
