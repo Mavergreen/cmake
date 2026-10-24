@@ -13,7 +13,7 @@ The shipped CMake is not covered by the dedication above. It is Kitware's
 CMake, under CMake's own OSI-approved BSD 3-Clause License, which the .pkg
 installs at /usr/local/mavergreen/cmake/doc/cmake-4.4/LICENSE.rst beside
 the licences of the libraries CMake bundles. Its x86_64 slice also contains
-LLVM's libc++, libc++abi and libunwind, under Apache-2.0 WITH LLVM-exception.
+LLVM's libc++, under Apache-2.0 WITH LLVM-exception.
 
 patches/ holds changes to CMake's source, under CMake's licence, which
 follows verbatim from CMake 4.4.4's LICENSE.rst.
