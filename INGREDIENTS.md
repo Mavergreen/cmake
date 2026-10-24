@@ -6,7 +6,7 @@ The *own upstream* is Kitware's CMake; an ingredient is anything else the artifa
 | Ingredient | Pinned in | Renovate | On a bump |
 |---|---|---|---|
 | CMake source (own upstream), with the libraries it bundles (curl, libarchive, libuv, zlib and others; their licences install under `doc/cmake-4.4`) | `UPSTREAM_VERSION` | ✅ `github-releases` on `Kitware/CMake` | cuts `<ver>-mavericks.1` |
-| clang22 N−1 (compiler, linker; the x86_64 slice's static libc++, libc++abi and libunwind) | `components/clang22/version` | ✅ `github-releases` on `Mavergreen/clang-22`, `-mavericks.N` versioning | repackage → `-mavericks.(N+1)` |
+| clang22 N−1 (compiler, linker; the x86_64 slice's static libc++) | `components/clang22/version` | ✅ `github-releases` on `Mavergreen/clang-22`, `-mavericks.N` versioning | repackage → `-mavericks.(N+1)` |
 | Recaulk (`librecaulk.a`, linked by clang22 N−1's `clang.cfg`; x86_64 only: `clock_gettime` and kin for libc++'s chrono) | `components/clang22/version` (moves with clang22) | ✅ via the clang22 pin | repackage → `-mavericks.(N+1)` |
 | MacOSX10.9 and MacOSX11.3 SDKs | shipyard `fetch_sdk.sh` (pinned by hash) | ✅ moves with shipyard `@v1` | moving tag |
 | Sparkle 1.27.3 (embedded in `cmake-updater.app`) | shipyard `fetch_sparkle_framework.sh` (pinned by hash) | ✅ moves with shipyard `@v1` | moving tag |
@@ -45,5 +45,5 @@ has no AArch64 backend. The merge uses the host's `lipo` (Xcode's, via shipyard'
 ## Conformance deviations
 
 - arm64:build/build.sh: developers and CI on Apple Silicon run this CMake to build Mavericks artifacts, so the pkg carries an arm64 (11.0) slice beside the x86_64 (10.9) one. Revisit when nothing that produces Mavericks artifacts runs on arm64.
-- static-cxx-runtime:build/build.sh: the x86_64 slice links LLVM 22's libc++, libc++abi and libunwind statically, clang22 N−1's own clang++.cfg default, until clang22 links the family's shared libc++.
+- static-cxx-runtime:build/build.sh: the x86_64 slice links LLVM 22's libc++ statically and uses Mavericks' system libc++abi and unwinder, clang22 N−1's own clang++.cfg default, until clang22 links the family's shared libc++.
 - system-cxx-runtime:build/build.sh: the arm64 slice links macOS's /usr/lib/libc++.1.dylib, compiled against the MacOSX11.3 SDK's libc++ headers: no arm64 libcxx exists, and clang22-cross's runtimes are x86_64 only; revisit when an arm64 libcxx exists.
