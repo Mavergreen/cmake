@@ -1,5 +1,5 @@
 #!/bin/sh
-# platform: macOS-only -- package.sh reads the fixtures' slices with clang22's llvm-lipo, which pkgutil expands
+# platform: host-agnostic
 #   usage: updater-slices-test.sh     package.sh refuses a universal cmake beside an x86_64-only updater
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

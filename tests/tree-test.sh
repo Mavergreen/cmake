@@ -1,6 +1,7 @@
 #!/bin/sh
-# platform: macOS-only -- the tree's cmake runs here, and pkgutil expands clang22 for its Mach-O readers
-#   usage: tree-test.sh [TREE]     checks a built tree (default: build.sh's) as the product promises it
+# platform: host-agnostic
+#   usage: tree-test.sh [TREE]     checks a built tree (default: build.sh's) as the product promises it; on a Mac
+#          it also runs the tree's cmake (Linux cannot: the vm-test and modern-smoke jobs run it there)
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$ROOT/build/versions.sh"; . "$ROOT/build/msc.sh"; . "$ROOT/tests/lib/stock-cases.sh"
@@ -17,7 +18,7 @@ t="$(mktemp -d "${TMPDIR:-/tmp}/cmake-tree-test.XXXXXX")"; trap 'rm -rf "$t"' EX
 archs="$("$LIPO" -info "$C" | sed -n 's/.*: //p' | xargs)"
 case "$archs" in
   "x86_64 arm64") ;;
-  x86_64) [ "${MAVERICKS_MODE:-$(sh "$SHIPYARD_SCRIPTS/mavericks_mode.sh")}" = native ] \
+  x86_64) [ "$(sh "$ROOT/build/mode.sh")" = native ] \
             || fail "bin/cmake is x86_64 alone, but this host builds both slices"
           echo "SKIP: $T has no arm64 slice (a 10.9 build makes x86_64 alone), so the universal and arm64 checks did not run" ;;
   *) fail "bin/cmake must be x86_64 and arm64 (got '$archs')" ;;
@@ -45,5 +46,9 @@ for f in $(find "$T" -type f \( -perm -u+x -o -name "*.dylib" -o -name "*.so" \)
 done
 [ "$n" -ge 3 ] || fail "found $n Mach-O files under $T; cmake, ctest and cpack at least"
 
-stock_cases "$C" "$KITWARE_VERSION" "$t"
-echo "PASS: tree ($archs)"
+if [ "$(uname -s)" = Darwin ]; then
+  stock_cases "$C" "$KITWARE_VERSION" "$t"
+  echo "PASS: tree ($archs)"
+else
+  echo "PASS: tree ($archs; its cmake runs in vm-test and modern-smoke, not on this $(uname -s) host)"
+fi

@@ -20,5 +20,12 @@
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-mavericks\\.(?<build>\\d+)$"
     }
+  ],
+  "packageRules": [
+    {
+      "description": "A clang22 bump also needs that release's Linux archive digest, which Renovate cannot read.",
+      "matchDepNames": ["Mavergreen/clang-22"],
+      "prBodyNotes": ["Linux builds verify clang22's archive against components/clang22/linux-sha256: on this branch, replace that file with the `clang22-<version>-linux-x86_64.tar.gz` line of the new release's SHA256SUMS."]
+    }
   ]
 }

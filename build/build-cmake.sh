@@ -1,10 +1,11 @@
 #!/bin/sh
-# platform: macOS-only -- lipo and otool check the slice it builds
-#   usage: build-cmake.sh --arch x86_64|arm64 --min-os VER --prefix DIR --sysroot DIR [--jobs N] [-- CMAKE-ARG...]
+# platform: host-agnostic
+#   usage: build-cmake.sh --arch x86_64|arm64 --min-os VER --prefix DIR --sysroot DIR [--jobs N] [--tools-out FILE] [-- CMAKE-ARG...]
 #          build-cmake.sh --fetch-only --dest DIR          (download + verify only; prints the path)
 #          Builds ONE slice of CMake (one arch, one deployment floor) into a prefix, from Kitware's
 #          SOURCE tarball for UPSTREAM_VERSION, verified against the release's own
-#          cmake-<v>-SHA-256.txt, patched with patches/cmake/*.patch, and configured by shipyard-cmake.
+#          cmake-<v>-SHA-256.txt, patched with patches/cmake/*.patch, and configured by shipyard-cmake
+#          (on Linux, the host's cmake). --tools-out writes build-tools.sh's lines for the build to FILE.
 #          build.sh runs it once per slice and merges the slices. The TARGET compiler is the
 #          environment's CC/CXX (and CFLAGS/CXXFLAGS/LDFLAGS), which cmake honours; CMAKE-ARGs after
 #          -- reach the configure. LIPO and OTOOL name the Mach-O readers (default lipo, otool).
@@ -16,7 +17,7 @@
 #           slice cannot without Rosetta, and macOS 28 removes Rosetta.
 set -eu
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ARCH=""; MINOS=""; PREFIX=""; JOBS=""; FETCH_ONLY=""; DEST=""; SYSROOT=""
+ARCH=""; MINOS=""; PREFIX=""; JOBS=""; FETCH_ONLY=""; DEST=""; SYSROOT=""; TOOLS_OUT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --arch) ARCH="$2"; shift 2;;
@@ -24,6 +25,7 @@ while [ $# -gt 0 ]; do
     --prefix) PREFIX="$2"; shift 2;;
     --jobs) JOBS="$2"; shift 2;;
     --sysroot) SYSROOT="$2"; shift 2;;
+    --tools-out) TOOLS_OUT="$2"; shift 2;;
     --fetch-only) FETCH_ONLY=1; shift;;
     --dest) DEST="$2"; shift 2;;
     --) shift; break;;
@@ -70,15 +72,20 @@ case "$MINOS" in
   *) echo "build-cmake: --min-os '$MINOS' is not a macOS version with a known Darwin release" >&2; exit 2;;
 esac
 
-HOSTCMAKE="$(command -v shipyard-cmake || echo /usr/local/mavergreen/bin/shipyard-cmake)"
-"$HOSTCMAKE" --version >/dev/null 2>&1 || {
-  echo "build-cmake: no usable shipyard-cmake (tried $HOSTCMAKE), and this recipe configures CMake with it" >&2
-  echo "    install the shipyard pkg (https://github.com/Mavergreen/shipyard/releases), or in GitHub Actions" >&2
-  echo "    use Mavergreen/shipyard/.github/actions/install@v1" >&2
-  exit 1
-}
-
-[ -n "$JOBS" ] || JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 2)"
+if [ "$(sh "$REPO_ROOT/build/mode.sh")" = linux ]; then
+  HOSTCMAKE="$(command -v cmake || echo cmake)"
+  "$HOSTCMAKE" --version >/dev/null 2>&1 || { echo "build-cmake: no cmake on PATH, and a Linux host configures CMake with its own" >&2; exit 1; }
+  [ -n "$JOBS" ] || JOBS="$(getconf _NPROCESSORS_ONLN)"
+else
+  HOSTCMAKE="$(command -v shipyard-cmake || echo /usr/local/mavergreen/bin/shipyard-cmake)"
+  "$HOSTCMAKE" --version >/dev/null 2>&1 || {
+    echo "build-cmake: no usable shipyard-cmake (tried $HOSTCMAKE), and this recipe configures CMake with it" >&2
+    echo "    install the shipyard pkg (https://github.com/Mavergreen/shipyard/releases), or in GitHub Actions" >&2
+    echo "    use Mavergreen/shipyard/.github/actions/install@v1" >&2
+    exit 1
+  }
+  [ -n "$JOBS" ] || JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 2)"
+fi
 [ -d "$SYSROOT" ] || { echo "build-cmake: --sysroot $SYSROOT is not a directory" >&2; exit 2; }
 
 W="$(mktemp -d "${TMPDIR:-/tmp}/build-cmake.XXXXXX")"; trap 'rm -rf "$W"' EXIT
@@ -119,6 +126,7 @@ done
   "$@"
 "$HOSTCMAKE" --build "$W/build" --parallel "$JOBS"
 "$HOSTCMAKE" --install "$W/build"
+[ -z "$TOOLS_OUT" ] || sh "$REPO_ROOT/build/build-tools.sh" "$W/build" build > "$TOOLS_OUT"
 
 # platform: a build-host package manager (pkgsrc, Homebrew, MacPorts) leaking into bin/* runs fine
 #           here and fails to even launch on a box lacking that exact library at that exact path

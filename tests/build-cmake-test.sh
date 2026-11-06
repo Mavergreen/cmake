@@ -42,16 +42,17 @@ if msg="$(sh "$S" --arch x86_64 --min-os banana --prefix "$work/p" --sysroot "$w
 fi
 printf '%s' "$msg" | grep -q 'min-os' || { echo "FAIL: the refusal must name --min-os; got: $msg"; exit 1; }
 
-# spec: build/build-cmake.sh -- a box without shipyard-cmake must say so and say where to get it,
-#       instead of failing later inside a download or a configure
-if PATH=/usr/bin:/bin command -v shipyard-cmake >/dev/null 2>&1 || [ -e /usr/local/mavergreen/bin/shipyard-cmake ]; then
-  echo "SKIP: shipyard-cmake is installed here, so the missing-host-cmake refusal cannot be exercised"
+# spec: build/build-cmake.sh -- a box without its host cmake (shipyard-cmake on a Mac, cmake on Linux) must
+#       say so, and a Mac must say where to get shipyard-cmake, instead of failing later inside a download or a configure
+if [ "$(sh "$here/../build/mode.sh")" = linux ]; then host=cmake; want='no cmake on PATH'; else host=shipyard-cmake; want='install@v1'; fi
+if PATH=/usr/bin:/bin command -v "$host" >/dev/null 2>&1 || [ -e "/usr/local/mavergreen/bin/$host" ]; then
+  echo "SKIP: $host is reachable from /usr/bin:/bin here, so the missing-host-cmake refusal cannot be exercised"
 else
   if msg="$(PATH=/usr/bin:/bin sh "$S" --arch x86_64 --min-os 10.9 --prefix "$work/p" --sysroot "$work/sdk" 2>&1)"; then
-    echo "FAIL: no shipyard-cmake must be refused"; exit 1
+    echo "FAIL: no $host must be refused"; exit 1
   fi
-  printf '%s' "$msg" | grep -q 'install@v1' \
-    || { echo "FAIL: the refusal must name where to get shipyard-cmake; got: $msg"; exit 1; }
+  printf '%s' "$msg" | grep -q "$want" \
+    || { echo "FAIL: the refusal must say '$want'; got: $msg"; exit 1; }
 fi
 
 # spec: build/build-cmake.sh -- a missing --sysroot must be a usage error naming --sysroot (the
