@@ -22,7 +22,16 @@ grep -q 'dispatch-field: reconcile=true' "$ROOT/.github/workflows/reconcile.yml"
   || fail "reconcile.yml must dispatch with reconcile=true, so ver re-asks release-needed.sh and publishes a never-released upstream as N; its default, local_release=true, would cut N+1"
 
 build="$(job build)"
-printf '%s\n' "$build" | grep -q 'runs-on: macos-' || fail "the build job must run on a macOS runner: it builds both slices"
+printf '%s\n' "$build" | grep -q 'runs-on: ubuntu-latest' || fail "the build job must run on Linux: it builds, tests, packages and signs both slices there, and macOS runners are scarce"
+macos="$(printf '%s\n' "$code" | awk '/^  [a-z][a-z-]*:$/{j=$1} /runs-on: macos-/{print j}' | xargs)"
+[ "$macos" = modern-smoke: ] || fail "the only macOS job must be modern-smoke, declared in INGREDIENTS.md (got '$macos')"
+grep -qx -- '- macos-runner:release.yml:modern-smoke: .*; exit: none while the slice ships' "$ROOT/INGREDIENTS.md" \
+  || fail "INGREDIENTS.md must declare modern-smoke's macOS runner, with its exit"
+printf '%s\n' "$build" | grep -q 'run-repo-tests.sh" --strict-host' || fail "the Linux build must run every host-agnostic test, none skipping (--strict-host)"
+printf '%s\n' "$build" | grep -q 'SPARKLE_PRIVATE_KEY: \${{ secrets.SPARKLE_PRIVATE_KEY }}' || fail "the Linux build job signs the pkg"
+if job modern-smoke | grep -q 'SPARKLE_PRIVATE_KEY'; then fail "modern-smoke must not see the signing key"; fi
+printf '%s\n' "$build" | grep -q 'LIPO=$CL/bin/llvm-lipo' || fail "conformance must read Mach-O with clang22's llvm-lipo and llvm-otool"
+printf '%s\n' "$build" | grep -q 'name: cmake-binaries' || fail "the build must upload the tree and updater it packaged, so another host can repackage them byte for byte"
 want="cmake-slices-\${{ hashFiles('UPSTREAM_VERSION', 'components/clang22/version', 'patches/**', 'build/*.sh') }}"
 keys="$(printf '%s\n' "$build" | sed -n 's/^ *key: //p' | sort -u)"
 [ "$keys" = "$want" ] && [ "$(printf '%s\n' "$build" | grep -c '^ *key: ')" = 2 ] \
@@ -50,8 +59,21 @@ printf '%s\n' "$vm" | grep -q 'needs: \[ver, build\]' || fail "vm-test must test
 printf '%s\n' "$vm" | grep -q 'installer -pkg "dist/cmake-$CMAKE_FULL_VERSION.pkg"' || fail "vm-test must install this run's pkg in the guest"
 printf '%s\n' "$vm" | grep -q 'sh tests/on-target.sh "$CMAKE_FULL_VERSION"' || fail "vm-test must run tests/on-target.sh against the installed version: it is the only run of the x86_64 cmake"
 printf '%s\n' "$vm" | grep -q 'packages: write' || fail "vm-test needs packages: write for mavericks-vm's shared guest cache"
-printf '%s\n' "$code" | awk '/^  publish:/{f=1;next} /^  [a-z][a-z-]*:$/{f=0} f&&/needs:/' | grep -q 'vm-test' \
-  || fail "publish must wait for vm-test: a cmake that did not run on 10.9 must not ship"
+printf '%s\n' "$vm" | grep -q 'sh build/launch-updater.sh' || fail "vm-test must launch the Linux-built updater on 10.9"
+ms="$(job modern-smoke)"
+printf '%s\n' "$ms" | grep -q 'needs: \[ver, build\]' || fail "modern-smoke must test the pkg the build job made"
+printf '%s\n' "$ms" | grep -q 'installer -pkg "dist/cmake-$CMAKE_FULL_VERSION.pkg"' || fail "modern-smoke must install this run's pkg"
+printf '%s\n' "$ms" | grep -q 'sh tests/on-target.sh "$CMAKE_FULL_VERSION"' || fail "modern-smoke must run the on-target test: it is the only run of the arm64 cmake"
+printf '%s\n' "$ms" | grep -q 'sh build/launch-updater.sh' || fail "modern-smoke must launch the Linux-built updater on Apple Silicon"
+pn="$(printf '%s\n' "$code" | awk '/^  publish:/{f=1;next} /^  [a-z][a-z-]*:$/{f=0} f&&/needs:/')"
+printf '%s\n' "$pn" | grep -q 'vm-test' || fail "publish must wait for vm-test: a cmake that did not run on 10.9 must not ship"
+printf '%s\n' "$pn" | grep -q 'modern-smoke' || fail "publish must wait for modern-smoke: an arm64 cmake that did not run must not ship"
+job retry | grep -q 'uses: Mavergreen/shipyard/.github/workflows/retry-release.yml@v1' || fail "a retry job must recover a publish that lost its tag"
+req="$(job required)"
+printf '%s\n' "$req" | grep -q 'name: required (release)' && printf '%s\n' "$req" | grep -q 'if: always()' \
+  && printf '%s\n' "$req" | grep -q 'needs: \[ver, build, vm-test, modern-smoke, scan, publish, retry\]' \
+  && printf '%s\n' "$req" | grep -q 'uses: Mavergreen/shipyard/.github/actions/required-gate@v1' \
+  || fail "a 'required (release)' job must always run, need every other job and judge them with required-gate@v1"
 
 notes="$(line_of 'release-notes.sh')"; state="$(line_of 'release-state-record.sh')"
 sign="$(line_of 'sign_and_appcast.sh')"; publish="$(line_of 'publish-release.yml')"
