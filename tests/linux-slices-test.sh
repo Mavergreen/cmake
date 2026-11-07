@@ -38,8 +38,18 @@ for a in x86_64 arm64; do
 done
 grep -q -- '--require-archs x86_64 arm64' "$t/merge" || fail "Linux must merge both slices: $(cat "$t/merge" 2>/dev/null)"
 [ "$out" = "$t/root/mavergreen-cmake/tree" ] || fail "build.sh must print the merged tree (got '$out')"
-[ "$(cat "$t/root/mavergreen-cmake/build-tools.txt")" = "build-build-tool=make:GNU Make 9
-build-cmake=cmake version 9" ] || fail "build.sh must record the tools that built the slices: $(cat "$t/root/mavergreen-cmake/build-tools.txt")"
+[ "$(cat "$t/root/mavergreen-cmake/build-tools.txt")" = "build-arm64-build-tool=make:GNU Make 9
+build-arm64-cmake=cmake version 9
+build-x86_64-build-tool=make:GNU Make 9
+build-x86_64-cmake=cmake version 9" ] || fail "build.sh must record the tools that built each slice: $(cat "$t/root/mavergreen-cmake/build-tools.txt")"
+mkdir -p "$t/given/bin"; printf '#!/bin/sh\n' > "$t/given/bin/cmake"; chmod +x "$t/given/bin/cmake"; printf 'build-cmake=cmake version 3.31\nbuild-build-tool=make:GNU Make 3.81\n' > "$t/given.build-tools.txt"
+rm -f "$t/calls"/*
+( SLICE_X86_64="$t/given"; export SLICE_X86_64; run linux >/dev/null ) || fail "build.sh must merge an x86_64 slice another host built with tools of its own"
+[ "$(ls "$t/calls" | xargs)" = arm64 ] || fail "a given x86_64 slice must not be rebuilt (built: $(ls "$t/calls" | xargs))"
+[ "$(cat "$t/root/mavergreen-cmake/build-tools.txt")" = "build-arm64-build-tool=make:GNU Make 9
+build-arm64-cmake=cmake version 9
+build-x86_64-build-tool=make:GNU Make 3.81
+build-x86_64-cmake=cmake version 3.31" ] || fail "build.sh must record each slice's own tools: $(cat "$t/root/mavergreen-cmake/build-tools.txt")"
 rm -f "$t/calls"/* "$t/merge"
 run native >/dev/null || fail "build.sh failed in native mode"
 [ "$(ls "$t/calls" | xargs)" = x86_64 ] || fail "a 10.9 build makes x86_64 alone (built: $(ls "$t/calls" | xargs))"

@@ -11,7 +11,7 @@ The *own upstream* is Kitware's CMake; an ingredient is anything else the artifa
 | MacOSX10.9 and MacOSX11.3 SDKs | shipyard `fetch_sdk.sh` (pinned by hash) | ✅ moves with shipyard `@v1` | moving tag |
 | Sparkle 1.27.3 (embedded in `cmake-updater.app`) | shipyard `fetch_sparkle_framework.sh` (pinned by hash) | ✅ moves with shipyard `@v1` | moving tag |
 | shipyard-cmake (configures a Mac's build; not shipped) | shipyard `@v1` | ✅ moves with shipyard `@v1` | moving tag |
-| Linux host CMake and make (configure and build both slices and the updater on Linux; a Mac's builds use the make on `PATH`) | runner-provided, unpinned; build-info records each `--version` (`build-cmake`, `build-build-tool`, `updater-cmake`, `updater-build-tool`) | ❌ untrackable here: the runner image provides them, so no pin exists to track. Exit: a pinned cmake on Linux hosts (shipyard QUEUE) | none; a runner image update can change them |
+| Linux host CMake and make (configure and build both slices and the updater on Linux; a Mac's builds use the make on `PATH`) | runner-provided, unpinned; build-info records each `--version`, per slice (`build-x86_64-cmake`, `build-x86_64-build-tool`, `build-arm64-cmake`, `build-arm64-build-tool`) and for the updater (`updater-cmake`, `updater-build-tool`) | ❌ untrackable here: the runner image provides them, so no pin exists to track. Exit: a pinned cmake on Linux hosts (shipyard QUEUE) | none; a runner image update can change them |
 
 ## CMake source verification
 

@@ -4,7 +4,8 @@
 #          x86_64) into $WORK/slice-<arch>, takes a slice another host built from SLICE_X86_64 or
 #          SLICE_ARM64 (a slice directory build.sh made there), gates each thin slice, merges the slices
 #          into OUT (default $TREE) with clang22's llvm-lipo and gates OUT; writes the build tools that
-#          built the slices (each slice's <slice>.build-tools.txt) to $WORK/build-tools.txt; prints OUT
+#          built each slice (its <slice>.build-tools.txt) to $WORK/build-tools.txt, keyed build-<arch>-;
+#          prints OUT
 set -eu
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO_ROOT/build/versions.sh"
@@ -65,7 +66,7 @@ else
   cp -R "$d_x86_64$d_arm64" "$OUT"
 fi
 sh "$REPO_ROOT/build/compat-gate.sh" "$OUT" "$have" >&2
-{ [ -z "$d_x86_64" ] || cat "$d_x86_64.build-tools.txt"; [ -z "$d_arm64" ] || cat "$d_arm64.build-tools.txt"; } | sort -u > "$WORK/build-tools.txt"
-[ -z "$(cut -d= -f1 "$WORK/build-tools.txt" | sort | uniq -d)" ] || { echo "build: the slices were built by different tools:" >&2; cat "$WORK/build-tools.txt" >&2; exit 1; }
+{ [ -z "$d_x86_64" ] || sed 's/^build-/build-x86_64-/' "$d_x86_64.build-tools.txt"
+  [ -z "$d_arm64" ] || sed 's/^build-/build-arm64-/' "$d_arm64.build-tools.txt"; } | sort > "$WORK/build-tools.txt"
 echo "build: $OUT holds $have" >&2
 echo "$OUT"

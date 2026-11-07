@@ -83,7 +83,16 @@ info="$(dirname "$PKG")/build-info-$([ "$want" = x86_64 ] && echo dev || echo re
 [ -f "$info" ] || fail "packaging must write $info"
 key() { sed -n "s/^$1=//p" "$info"; }
 tool_line() { "$1" --version 2>/dev/null | sed -n 1p | tr -d '\n' | tr -s '[:space:]' '_'; }
-for k in build-cmake build-build-tool updater-cmake updater-build-tool; do
+for a in $archs; do
+  for k in cmake build-tool; do
+    [ -n "$(key "build-$a-$k")" ] || fail "build-info must name build-$a-$k, the $k that built the $a slice"
+    f="$WORK/slice-$a.build-tools.txt"
+    [ ! -f "$f" ] || [ "$(key "build-$a-$k")" = "$(sed -n "s/^build-$k=//p" "$f" | tr -s '[:space:]' '_')" ] \
+      || fail "build-info's build-$a-$k must be what $f records"
+  done
+done
+[ -z "$(key build-cmake)$(key build-build-tool)" ] || fail "build-info keys the slices' tools by arch: two hosts may build them with different tools"
+for k in updater-cmake updater-build-tool; do
   [ -n "$(key "$k")" ] || fail "build-info must name $k, the tool that built what ships"
 done
 for d in "$WORK"/updater-*; do
