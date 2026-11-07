@@ -2,7 +2,7 @@
 # platform: host-agnostic
 #   usage: fetch-clang22.sh     prints the prefix of clang22 N-1 (components/clang22/version) for this host,
 #          through shipyard's fetch_clang22.sh: the Linux archive on Linux, the cross pkg on a modern Mac, the
-#          native pkg on 10.9. On Linux the archive's clang.cfg is then pointed at the pinned 10.9 SDK.
+#          native pkg on 10.9. On Linux the archive's clang.cfg is then pointed at the pinned 10.9 SDK, unless it already is.
 # spec: components/clang22/version -- release N of a product is built by clang22 N-1, pinned as an ingredient
 set -eu
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -13,6 +13,7 @@ for b in clang clang++ ld64.lld llvm-lipo llvm-ar llvm-ranlib llvm-otool llvm-nm
 done
 host="${CLANG22_HOST:-}"; [ -n "$host" ] || { [ "$(uname -s)" = Linux ] && host=linux; } || :
 if [ "$host" = linux ]; then
-  "$d/bin/setup-sdk" "$(sh "$SHIPYARD_SCRIPTS/fetch_sdk.sh")" >&2
+  sdk="$(sh "$SHIPYARD_SCRIPTS/fetch_sdk.sh")"; l="$d/SDKs/MacOSX10.9.sdk"
+  if [ -L "$l" ] && [ "$(cd "$l" && pwd -P)" = "$(cd "$sdk" && pwd -P)" ]; then :; else "$d/bin/setup-sdk" "$sdk" >&2; fi
 fi
 echo "$d"
