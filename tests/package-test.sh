@@ -87,8 +87,8 @@ for a in $archs; do
   for k in cmake build-tool; do
     [ -n "$(key "build-$a-$k")" ] || fail "build-info must name build-$a-$k, the $k that built the $a slice"
     f="$WORK/slice-$a.build-tools.txt"
-    [ ! -f "$f" ] || [ "$(key "build-$a-$k")" = "$(sed -n "s/^build-$k=//p" "$f" | tr -s '[:space:]' '_')" ] \
-      || fail "build-info's build-$a-$k must be what $f records"
+    [ ! -f "$f" ] || [ "$(key "build-$a-$k")" = "$(sed -n "s/^build-$k=//p" "$f" | tr -d '\n' | tr -s '[:space:]' '_')" ] \
+      || fail "build-info's build-$a-$k must be what $f records ($(sed -n "s/^build-$k=//p" "$f")), not '$(key "build-$a-$k")'"
   done
 done
 [ -z "$(key build-cmake)$(key build-build-tool)" ] || fail "build-info keys the slices' tools by arch: two hosts may build them with different tools"
