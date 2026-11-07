@@ -8,6 +8,7 @@ code="$(grep -v '^[[:space:]]*#' "$R")"
 line_of() { printf '%s\n' "$code" | grep -n -e "$1" | sed -n '1s/:.*//p'; }
 has() { printf '%s\n' "$code" | grep -q -e "$1"; }
 job() { printf '%s\n' "$code" | awk -v j="$1" '$0 ~ "^  "j":"{f=1;print;next} /^  [a-z][a-z-]*:$/{f=0} f'; }
+step_if() { printf '%s\n' "$1" | awk -v p="$2" '/^      - /{if(m)print i; m=0; i=""} /^      - if: |^        if: /{i=$0; sub(/^ *(- )?if: /,"",i)} index($0,p){m=1} END{if(m)print i}'; }
 
 printf '%s\n' "$code" | awk '/^  pull_request:/{f=1;next} f&&/branches:/{print;exit}' | grep -q '\[main\]' \
   || fail "release.yml must build pull requests to main: Renovate's automerge waits on that check"
@@ -32,6 +33,10 @@ printf '%s\n' "$build" | grep -q 'SPARKLE_PRIVATE_KEY: \${{ secrets.SPARKLE_PRIV
 if job modern-smoke | grep -q 'SPARKLE_PRIVATE_KEY'; then fail "modern-smoke must not see the signing key"; fi
 printf '%s\n' "$build" | grep -q 'LIPO=$CL/bin/llvm-lipo' || fail "conformance must read Mach-O with clang22's llvm-lipo and llvm-otool"
 printf '%s\n' "$build" | grep -q 'name: cmake-binaries' || fail "the build must upload the tree and updater it packaged, so another host can repackage them byte for byte"
+bi="$(step_if "$build" 'cmake-binaries.tar')"
+[ "$bi" = "github.event_name == 'workflow_dispatch'
+github.event_name == 'workflow_dispatch'" ] \
+  || fail "the cmake-binaries tar and its upload run on workflow_dispatch alone, a release or a conversion proof dispatched on a branch, not on every push (got: $bi)"
 want="cmake-slices-\${{ hashFiles('UPSTREAM_VERSION', 'components/clang22/version', 'patches/**', 'build/*.sh') }}"
 keys="$(printf '%s\n' "$build" | sed -n 's/^ *key: //p' | sort -u)"
 [ "$keys" = "$want" ] && [ "$(printf '%s\n' "$build" | grep -c '^ *key: ')" = 2 ] \

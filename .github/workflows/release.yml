@@ -164,6 +164,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: sh "$SHIPYARD_SCRIPTS/assert_appcast_upgradeable.sh" --appcast dist/cmake.xml --version "${{ needs.ver.outputs.version }}"
       - name: The binaries the pkg was made from, for repackaging elsewhere
+        if: github.event_name == 'workflow_dispatch'
         run: |
           set -eu
           tar -cf "$RUNNER_TEMP/cmake-binaries.tar" -C "$MAVERICKS_BUILD_ROOT/mavergreen-cmake" \
@@ -177,7 +178,8 @@ jobs:
             dist/build-info-*.txt
             dist/RELEASE_NOTES.md
             dist/*.xml
-      - uses: actions/upload-artifact@v7
+      - if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
         with:
           name: cmake-binaries
           if-no-files-found: error
