@@ -24,7 +24,7 @@ for s in $slices; do
   "$SC" -S "$REPO_ROOT" -B "$WORK/updater-$a" -DCMAKE_TOOLCHAIN_FILE="$SY/MavericksToolchain.cmake" \
     -DMavericksShipyard_DIR="$SY" -DCMAKE_OSX_ARCHITECTURES="$a" \
     -DCMAKE_OBJC_COMPILER="$CL/bin/clang" -DCMAKE_OBJC_COMPILER_TARGET="$a-apple-macos$floor" \
-    -DCMAKE_OBJC_FLAGS=--no-default-config -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DPKG_VERSION="$VER" >&2
+    -DCMAKE_OBJC_FLAGS=--no-default-config -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld --ld-path=$CL/bin/ld64.lld" -DPKG_VERSION="$VER" >&2
   "$SC" --build "$WORK/updater-$a" >&2
 done
 out="$WORK/updater/cmake-updater.app"; rm -rf "$WORK/updater"; mkdir -p "$WORK/updater"
