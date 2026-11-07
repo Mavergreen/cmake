@@ -29,6 +29,8 @@ rm -rf "$pr" "$scr" "$comp"; mkdir -p "$pr$(dirname "$PREFIX")" "$OUT"
 rm -f "$OUT"/"$SHORT"-*.pkg
 cp -R "$T" "$pr$PREFIX"
 app="${CMAKE_UPDATER_APP:-$(sh "$REPO_ROOT/build/build-updater.sh" "$VER")}"
+[ -d "$app" ] || { echo "package: $app does not exist -- no updater app to package" >&2; exit 1; }
+[ -x "$app/Contents/MacOS/$SHORT-updater" ] || { echo "package: $app has no executable Contents/MacOS/$SHORT-updater -- not a built updater" >&2; exit 1; }
 uarchs="$("$CL/bin/llvm-lipo" -info "$app/Contents/MacOS/$SHORT-updater" | sed -n 's/.*: //p' | xargs)"
 [ "$uarchs" = "$archs" ] || {
   echo "package: the updater is '$uarchs' but bin/cmake is '$archs'; a pkg for Apple Silicon with an x86_64-only updater asks for Rosetta -- build the updater on macOS 11 or later" >&2; exit 1; }
