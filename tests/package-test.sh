@@ -22,7 +22,8 @@ t="$(mktemp -d "${TMPDIR:-/tmp}/cmake-package-test.XXXXXX")"; trap 'rm -rf "$t"'
 comp="$(grep -l "identifier=\"$IDENTIFIER\"" "$t"/x/*/PackageInfo | sed 1q)"
 [ -n "$comp" ] || fail "$PKG holds no $IDENTIFIER component"
 comp="$(dirname "$comp")"
-mkdir "$t/root"; ( cd "$t/root" && gzip -dc "$comp/Payload" | cpio -id --quiet 2>/dev/null )
+mkdir "$t/root"; gzip -dc < "$comp/Payload" > "$t/payload.cpio" || fail "the pkg's payload must decompress"
+( cd "$t/root" && cpio -id --quiet < "$t/payload.cpio" ) || fail "cpio must extract the pkg's payload"
 P="$t/root$PREFIX"
 for f in bin/cmake bin/ctest bin/cpack mavergreen.plist; do [ -s "$P/$f" ] || fail "the pkg must install $PREFIX/$f"; done
 [ -d "$P/share/cmake-$(echo "$KITWARE_VERSION" | cut -d. -f1,2)/Modules" ] || fail "the pkg must install CMake's modules (CMAKE_ROOT) beside bin/"
