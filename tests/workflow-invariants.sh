@@ -4,7 +4,7 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 R="$ROOT/.github/workflows/release.yml"
 fail() { echo "FAIL: $1"; exit 1; }
-code="$(grep -v '^[[:space:]]*#' "$R")"
+code="$(grep -v '^[[:space:]]*#' "$R" | sed 's/[[:space:]]#.*$//')"
 line_of() { printf '%s\n' "$code" | grep -n -e "$1" | sed -n '1s/:.*//p'; }
 has() { printf '%s\n' "$code" | grep -q -e "$1"; }
 job() { printf '%s\n' "$code" | awk -v j="$1" '$0 ~ "^  "j":"{f=1;print;next} /^  [a-z][a-z-]*:$/{f=0} f'; }
@@ -70,6 +70,14 @@ printf '%s\n' "$ms" | grep -q 'needs: \[ver, build\]' || fail "modern-smoke must
 printf '%s\n' "$ms" | grep -q 'installer -pkg "dist/cmake-$CMAKE_FULL_VERSION.pkg"' || fail "modern-smoke must install this run's pkg"
 printf '%s\n' "$ms" | grep -q 'sh tests/on-target.sh "$CMAKE_FULL_VERSION"' || fail "modern-smoke must run the on-target test: it is the only run of the arm64 cmake"
 printf '%s\n' "$ms" | grep -q 'sh build/launch-updater.sh' || fail "modern-smoke must launch the Linux-built updater on Apple Silicon"
+guard="github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository || startsWith(github.head_ref, 'renovate/')"
+for j in vm-test modern-smoke; do
+  jj="$(job "$j")"
+  if printf '%s\n' "$jj" | grep -q 'continue-on-error'; then fail "$j must fail the run when it fails: no continue-on-error on the job or a step"; fi
+  [ "$(printf '%s\n' "$jj" | sed -n 's/^    if: //p')" = "$guard" ] || fail "$j may skip only a fork's pull request: its if: must be the fork-PR guard alone"
+  if printf '%s\n' "$jj" | grep -q -e '^      - if: ' -e '^        if: '; then fail "$j's steps run unconditionally: a skipped step is a smoke that did not run"; fi
+done
+if has 'secrets: inherit'; then fail "no job inherits every secret: the signing key reaches the build's signing step and scan alone"; fi
 pn="$(printf '%s\n' "$code" | awk '/^  publish:/{f=1;next} /^  [a-z][a-z-]*:$/{f=0} f&&/needs:/')"
 printf '%s\n' "$pn" | grep -q 'vm-test' || fail "publish must wait for vm-test: a cmake that did not run on 10.9 must not ship"
 printf '%s\n' "$pn" | grep -q 'modern-smoke' || fail "publish must wait for modern-smoke: an arm64 cmake that did not run must not ship"
